@@ -595,6 +595,15 @@ function onPtrDown(e) {
   paused = true;
 }
 
+function onPtrMove(e) {
+  if (!ptStart) return;
+  const t = e.touches ? e.touches[0] : e;
+  const dy = t.clientY - ptStart.y;
+  const dx = t.clientX - ptStart.x;
+  if (Math.abs(dy) > 8) { dragging = true; e.preventDefault(); }
+  ptLast = { x: t.clientX, y: t.clientY };
+}
+
 function onPtrUp(e) {
   // --- 1. EL TRUCO DEL AUDIO (SOLO ARRANCA AL SOLTAR EL DEDO) ---
   const audio = document.getElementById('audio');
