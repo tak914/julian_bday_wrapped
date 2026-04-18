@@ -633,7 +633,7 @@ function onPtrUp(e) {
       startTimer(); 
     }
   }, 300);
-
+}
 // registrar en el wrapper con passive:false para poder prevenir scroll
 const wrap = document.getElementById('slides-wrapper');
 wrap.addEventListener('touchstart', onPtrDown, { passive: true });
