@@ -125,7 +125,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:#020b1a;font-family:
 // ══════════════════════════════════════════════════════
 //  CONFIG
 // ══════════════════════════════════════════════════════
-const GIFT_TAPS = 20;
+const GIFT_TAPS = 50;
 const SLIDE_MS  = 9000;
 const SUSPENSE_MS = 5200; // tiempo de pantalla de suspenso (ms)
 
@@ -219,7 +219,8 @@ function updateProgressBar() {
 // ══════════════════════════════════════════════════════
 function startTimer() {
   clearInterval(timerID);
-  if (paused || SLIDES[cur].type === 'gift' || showSuspense) return;
+  // Agregamos la condición del video para que no avance solo por tiempo
+  if (paused || SLIDES[cur].type === 'gift' || SLIDES[cur].type === 'video' || showSuspense) return;
   timerID = setInterval(() => {
     progress += 100 / SLIDE_MS;
     if (progress >= 1) { progress = 0; advance(); return; }
@@ -390,19 +391,43 @@ function renderVideo() {
       </div>
       <div style="width:100%; border-radius:16px; overflow:hidden; background:rgba(0,0,0,.3); border:1px solid rgba(255,255,255,.08); display:flex; align-items:center; justify-content:center;" id="vid-wrap">
         <video 
+          id="mi-video"
           src="video.mp4" 
           controls 
           playsinline 
-          style="width:100%; border-radius:16px;" 
-          onerror="console.error('No se pudo cargar el video')">
+          style="width:100%; border-radius:16px;">
         </video>
       </div>
       <p class="opacity-50 leading-relaxed" style="font-size:13px;">Ese momento que guardamos para siempre 🥳</p>
     </div>
   `;
   showSlide(d);
-}
 
+  // --- LÓGICA INTELIGENTE DEL VIDEO ---
+  setTimeout(() => {
+    const vid = document.getElementById('mi-video');
+    const bgAudio = document.getElementById('audio');
+    
+    if (vid) {
+      // 1. Cuando Julián le da Play al video, pausamos a Mazzy Star
+      vid.addEventListener('play', () => {
+        if (audioPlaying && bgAudio) {
+          bgAudio.pause();
+        }
+      });
+
+      // 2. Cuando el video termina naturalmente...
+      vid.addEventListener('ended', () => {
+        // Reanudamos la música
+        if (audioPlaying && bgAudio) {
+          bgAudio.play().catch(()=>{});
+        }
+        // Saltamos automáticamente a la caja de regalo
+        advance();
+      });
+    }
+  }, 50);
+}
 // ── Slide regalo ──
 function renderGift() {
   giftTaps = 0; giftExploded = false; giftDone = false;
@@ -544,8 +569,19 @@ let ptStart = null, ptLast = null, ptTime = 0, dragging = false;
 const SWIPE_THRESHOLD = 50, VEL_THRESHOLD = 0.3;
 
 function onPtrDown(e) {
-  // ignorar clicks en video y botón audio
+  // 1. Intenta reproducir la música en el primer toque en la pantalla
+  const audio = document.getElementById('audio');
+  if (audio && audio.paused) {
+    audio.play().catch(err => console.log("Esperando interacción..."));
+    audioPlaying = true;
+    const btn = document.getElementById('audio-btn');
+    if (btn) btn.textContent = '⏸';
+  }
+
+  // 2. Evita interferir si está tocando el video o el botón de audio
   if (e.target.closest('video') || e.target.closest('#audio-btn')) return;
+  
+  // 3. Registra el inicio del toque o clic para el swipe
   const t = e.touches ? e.touches[0] : e;
   ptStart = { x: t.clientX, y: t.clientY };
   ptLast  = { x: t.clientX, y: t.clientY };
@@ -591,10 +627,12 @@ function onPtrUp(e) {
 
   ptStart = null; dragging = false;
   // retomar timer si no es gift y no es suspenso
-  setTimeout(() => {
-    if (SLIDES[cur].type !== 'gift' && !showSuspense) { paused = false; startTimer(); }
+ setTimeout(() => {
+    if (SLIDES[cur].type !== 'gift' && SLIDES[cur].type !== 'video' && !showSuspense) { 
+      paused = false; 
+      startTimer(); 
+    }
   }, 300);
-}
 
 // registrar en el wrapper con passive:false para poder prevenir scroll
 const wrap = document.getElementById('slides-wrapper');
